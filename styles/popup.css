@@ -1,0 +1,76 @@
+body {
+    font-family: 'Arial', sans-serif;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 300px;
+}
+
+p {
+    text-align: center;
+}
+
+.input-container {
+    margin-right: auto;
+    margin-left: auto;
+    padding: 8px;
+    width: 300px;
+    box-sizing: border-box;
+}
+
+.input-field {
+    margin-top: 6px;
+}
+
+#input-list {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+    margin-top: 15px;
+}
+
+.controls-container {
+    display: flex;
+    justify-content: center;
+}
+
+.controls-container span {
+    margin-left: 6px;
+    margin-right: 6px;
+}
+
+.controls-btn {
+    vertical-align: baseline;
+    margin-right: 8px;
+}
+
+.red {
+    background-color: #cb3636;
+}
+
+button {
+    border: none;
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 6px;
+    background-color: #4CAF50;
+    color: #fff;
+}
+
+#msg {
+    position: absolute;
+    top: 0px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 200px;
+}
+
+.msg-success {
+    color: #4CAF50;
+}
+
+.msg-error {
+    color: #FF0000;
+}

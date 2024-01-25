@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OLX Multisender</title>
+    <script src="scripts/popup.js"></script>
+    <link rel="stylesheet" href="styles/popup.css">
+</head>
+
+<body>
+    <p id="msg"></p>
+    <p>Bem-vindo ao OLX Multisender!</p>
+
+    <p>Cada campo de texto será uma nova mensagem enviada.</p>
+
+    <div class="input-container">
+        <div class="controls-container">
+            <button id="add-field-btn" class="controls-btn">Adicionar</button>
+            <button id="rmv-field-btn" class="controls-btn red">Remover</button>
+            <button id="car-field-btn" class="controls-btn ">Carregar</button>
+        </div>
+
+        <div id="input-list">
+            <input type="text" placeholder="Digite sua mensagem" class="input-field">
+        </div>
+    </div>
+
+    <button id="send-msg-btn">Enviar!</button>
+</body>
+
+</html>
