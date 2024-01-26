@@ -102,24 +102,26 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
 });
 
 async function sendMessage(message) {
-
     let msgs = message.data.msgArray;
 
     try {
         let inputText = await waitForElementToExist('#input-text-message', 4, 500, true);
-        //let inputText = document.querySelector('#input-text-message');
         let openChatBtn = document.querySelector('[data-element="button_reply-chat"]');
-        openChatBtn.click()
+        openChatBtn.click();
         inputText = await waitForElementToExist('#input-text-message');
-        if (!inputText) return ['error', new Error('Janela do chat não encontrado na página.')]
+        if (!inputText) return ['error', new Error('Janela do chat não encontrado na página.')];
+        const sendBtn = document.querySelector('div.sc-DTJrX.jNuBSW > button');
+        console.log('sendBtn: ', sendBtn);
 
         const msgPromisses = [];
+        let increment = 0
         for (const [ind, msg] of msgs.entries()) {
-            msgPromisses.push(handleSendMessage(inputText, msg, 1000 * ind));
-        }
+            msgPromisses.push(handleSendMessage(inputText, sendBtn, msg, 4000 + increment));
+            increment += 1500;
+        };
 
-        const res = await Promise.allSettled(msgPromisses)
-        console.log(res)
+        const res = await Promise.allSettled(msgPromisses);
+        console.log(res);
         return ['ok'];
 
     } catch (e) {
@@ -127,13 +129,13 @@ async function sendMessage(message) {
     }
 };
 
-async function handleSendMessage(inputField, msg, ms) {
-    inputField.value = msg;
+async function handleSendMessage(inputField, sendBtn, msg, ms) {
     await sleep(ms);
-    document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-    await sleep(150)
-    document.activeElement.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter" }));
-
+    inputField.value = msg;
+    const inputEvent = new Event('input', { bubbles: true });
+    inputField.dispatchEvent(inputEvent);
+    sendBtn.click();
+    return 'ok';
 };
 
 function waitForElementToExist(query, maxAttempts = 50, interval = 200, alwaysResolve = false) {
