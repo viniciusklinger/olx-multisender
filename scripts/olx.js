@@ -90,43 +90,61 @@ const Toast = (() => {
     };
 })();
 
-chrome.runtime.onMessage.addListener(async function (message, sender, sendResponse) {
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     if (message.action === 'toastUser') {
         Toast.create(message.data.text, message.data.color, message.data.ms);
     } else if (message.action === 'sendMessage') {
-        const res = await handleSendMessage(message);
-        sendResponse(res)
+        console.log('running handleSendMessage olx.js...');
+        sendMessage(message).then((res) => sendResponse(res));
+        console.log('returning handleSendMessage olx.js...')
+        return true;
     }
 });
 
-async function handleSendMessage(message) {
+async function sendMessage(message) {
+
     let msgs = message.data.msgArray;
-    
-    let inputText = await waitForElementToExist('input-text-message', 4, 500);
-    let openChatBtn = document.querySelector('[data-element="button_reply-chat"]');
-    openChatBtn.click()
-    inputText = await waitForElementToExist('input-text-message');
 
-    if (!inputText) return ['error', new Error('Janela do chat não encontrado na página.')]
+    try {
+        let inputText = await waitForElementToExist('#input-text-message', 4, 500, true);
+        //let inputText = document.querySelector('#input-text-message');
+        let openChatBtn = document.querySelector('[data-element="button_reply-chat"]');
+        openChatBtn.click()
+        inputText = await waitForElementToExist('#input-text-message');
+        if (!inputText) return ['error', new Error('Janela do chat não encontrado na página.')]
 
-    msgs.forEach(async (msg) => {
-        inputText.value = msg;
-        document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
-        await sleep(100);
-        document.activeElement.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter" }));
-        await sleep(1500);
-    })
+        const msgPromisses = [];
+        for (const [ind, msg] of msgs.entries()) {
+            msgPromisses.push(handleSendMessage(inputText, msg, 1000 * ind));
+        }
 
-    return ['ok']
+        const res = await Promise.allSettled(msgPromisses)
+        console.log(res)
+        return ['ok'];
+
+    } catch (e) {
+        console.log('Error: ', e);
+    }
 };
 
-function waitForElementToExist(query, maxAttempts = 50, interval = 200, currentAttempt = 1) {
+async function handleSendMessage(inputField, msg, ms) {
+    inputField.value = msg;
+    await sleep(ms);
+    document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    await sleep(150)
+    document.activeElement.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter" }));
+
+};
+
+function waitForElementToExist(query, maxAttempts = 50, interval = 200, alwaysResolve = false) {
+    let currentAttempt = 1
     return new Promise((resolve, reject) => {
         const checkElement = () => {
             const el = document.querySelector(query);
             if (el) {
                 resolve(el);
             } else if (currentAttempt >= maxAttempts) {
+                if (alwaysResolve) resolve(`Query: '${query}' não encontrou nenhum elemento após ${maxAttempts} tentativas.`)
                 reject(new Error(`Query: '${query}' não encontrou nenhum elemento após ${maxAttempts} tentativas.`));
             } else {
                 setTimeout(() => {

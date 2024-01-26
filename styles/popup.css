@@ -59,6 +59,11 @@ button {
     color: #fff;
 }
 
+button.disabled {
+    cursor: default;
+    background-color: darkgray;
+}
+
 #msg {
     position: absolute;
     top: 0px;
