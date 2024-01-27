@@ -94,22 +94,21 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     if (message.action === 'toastUser') {
         Toast.create(message.data.text, message.data.color, message.data.ms);
     } else if (message.action === 'sendMessage') {
-        console.log('running handleSendMessage olx.js...');
         sendMessage(message).then((res) => sendResponse(res));
-        console.log('returning handleSendMessage olx.js...')
         return true;
     }
 });
 
 async function sendMessage(message) {
     let msgs = message.data.msgArray;
+    const listingCode = message.data.listingCode;
 
     try {
         let inputText = await waitForElementToExist('#input-text-message', 4, 500, true);
         let openChatBtn = document.querySelector('[data-element="button_reply-chat"]');
         openChatBtn.click();
         inputText = await waitForElementToExist('#input-text-message');
-        if (!inputText) return ['error', new Error('Janela do chat não encontrado na página.')];
+        if (!inputText) return ['error', listingCode, new Error('Janela do chat não encontrado na página.')];
         const sendBtn = document.querySelector('div.sc-DTJrX.jNuBSW > button');
         console.log('sendBtn: ', sendBtn);
 
@@ -121,21 +120,34 @@ async function sendMessage(message) {
         };
 
         const res = await Promise.allSettled(msgPromisses);
-        console.log(res);
-        return ['ok'];
+        res.forEach((msg) => {
+            if (msg[0] != 'ok') {
+                return ['error', listingCode, new Error('Uma ou mais mensagens não foram enviadas.')]
+            }
+        });
+
+        return ['ok', listingCode];
 
     } catch (e) {
         console.log('Error: ', e);
+        return ['error', listingCode, e]
     }
 };
 
 async function handleSendMessage(inputField, sendBtn, msg, ms) {
-    await sleep(ms);
-    inputField.value = msg;
-    const inputEvent = new Event('input', { bubbles: true });
-    inputField.dispatchEvent(inputEvent);
-    sendBtn.click();
-    return 'ok';
+    try {
+        await sleep(ms);
+        inputField.value = msg;
+        const inputEvent = new Event('input', { bubbles: true });
+        inputField.dispatchEvent(inputEvent);
+        sendBtn.click();
+        return 'ok';
+
+    } catch (e) {
+        console.log('Error: ', e)
+        return ['error', e]
+    }
+
 };
 
 function waitForElementToExist(query, maxAttempts = 50, interval = 200, alwaysResolve = false) {

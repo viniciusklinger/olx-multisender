@@ -59,7 +59,7 @@ async function main() {
             console.log('Errors: \n', res[1])
             return;
         } else {
-            handleMsg('Mensagens enviadas com sucesso!');
+            handleMsg(res[1]);
         }
 
     } catch (e) {
