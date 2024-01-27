@@ -2,8 +2,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const addFieldBtn = document.getElementById('add-field-btn');
     const rmvFieldBtn = document.getElementById('rmv-field-btn');
     const sendMsgtBtn = document.getElementById('send-msg-btn');
+    const saveMsgtBtn = document.getElementById('save-msg-btn');
+    const loadMsgtBtn = document.getElementById('load-msg-btn');
     addFieldBtn.addEventListener('click', InputFields.addInput);
     rmvFieldBtn.addEventListener('click', InputFields.removeInput);
+    loadMsgtBtn.addEventListener('click', InputFields.loadMsgs);
+    saveMsgtBtn.addEventListener('click', InputFields.saveMessages);
     sendMsgtBtn.addEventListener('click', main);
 });
 
@@ -14,7 +18,7 @@ function handleMsg(msg, isErr = false) {
     setTimeout(function () {
         msgEl.textContent = '';
         msgEl.className = '';
-    }, 2000);
+    }, 4000);
 }
 
 const InputFields = (() => {
@@ -22,7 +26,88 @@ const InputFields = (() => {
 
     function getMsgs() {
         const inputs = document.querySelectorAll('input.input-field');
-        return Array.from(inputs).map(field => field.value || null).filter(el => el);
+        const msgsArray = Array.from(inputs).map(field => field.value || null).filter(el => el);
+        return msgsArray.length == 0 ? null : msgsArray
+    }
+
+    async function loadMsgs() {
+        const loadMsgtBtn = document.getElementById('load-msg-btn');
+        loadMsgtBtn.disabled = true;
+        loadMsgtBtn.classList.add('disabled');
+
+        const msgs = await chrome.runtime.sendMessage({ action: 'loadMsgsArray' });
+        let inputFields = document.querySelectorAll('input.input-field');
+
+        if (!msgs) {
+            handleMsg('Nenhuma mensagem salva na memória.', true)
+            loadMsgtBtn.disabled = false;
+            loadMsgtBtn.classList.remove('disabled');
+            return;
+        }
+
+        arrangeFields(msgs.length, inputFields.length);
+
+        inputFields = document.querySelectorAll('input.input-field');
+        if (msgs.length == 1) {
+            inputFields[0].value = msgs[0];
+        } else {
+            for (let i = 0; i < msgs.length; i++) {
+                inputFields[i].value = msgs[i];
+            };
+        }
+
+        loadMsgtBtn.disabled = false;
+        loadMsgtBtn.classList.remove('disabled');
+        handleMsg('Mensagens carregadas com sucesso!')
+    }
+
+    async function saveMessages() {
+        const saveMsgtBtn = document.getElementById('save-msg-btn');
+        saveMsgtBtn.disabled = true;
+        saveMsgtBtn.classList.add('disabled');
+
+        const msgsArray = InputFields.getMsgs();
+
+        if (!msgsArray) {
+            handleMsg('Nenhuma mensagem foi digitada.', true)
+            saveMsgtBtn.disabled = false;
+            saveMsgtBtn.classList.remove('disabled');
+            return;
+        }
+
+        let inputFields = document.querySelectorAll('input.input-field');
+        arrangeFields(msgsArray.length, inputFields.length);
+        inputFields = document.querySelectorAll('input.input-field');
+        for (let i = 0; i < msgsArray.length; i++) {
+            inputFields[i].value = msgsArray[i];
+        };
+
+        const msgs = await chrome.runtime.sendMessage({ action: 'saveMsgsArray', data: { msgsArray: msgsArray } });
+        if (msgs[0] != 'ok') {
+            console.log('Erro ao salvar mensagens: ', msgs[1]);
+            handleMsg('Erro ao salvar mensagem, tente novamente.', true);
+            saveMsgtBtn.disabled = false;
+            saveMsgtBtn.classList.remove('disabled');
+            return;
+        }
+
+        saveMsgtBtn.disabled = false;
+        saveMsgtBtn.classList.remove('disabled');
+        handleMsg('Mensagem salva com sucesso!');
+    }
+
+    function arrangeFields(msgsLength, inputsLength) {
+        if (msgsLength < inputsLength) {
+            const lengthDiff = inputsLength - msgsLength;
+            for (let i = 0; i < lengthDiff; i++) {
+                removeInput();
+            };
+        } else if (msgsLength > inputsLength) {
+            const lengthDiff = msgsLength - inputsLength;
+            for (let i = 0; i < lengthDiff; i++) {
+                addInput();
+            }
+        }
     }
 
     function addInput() {
@@ -34,7 +119,7 @@ const InputFields = (() => {
         newInput.className = 'input-field';
         inputContainer.appendChild(newInput);
     }
-    
+
     function removeInput() {
         if (inputCount > 1) {
             inputCount--;
@@ -44,7 +129,9 @@ const InputFields = (() => {
     }
 
     return {
-        get,
+        getMsgs,
+        loadMsgs,
+        saveMessages,
         addInput,
         removeInput
     };

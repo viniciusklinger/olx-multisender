@@ -13,7 +13,7 @@ const StorageMethods = (() => {
         });
     }
 
-    function write(dataToSave) {
+    function writeAsync(dataToSave) {
         return new Promise((resolve, reject) => {
             chrome.storage.sync.set(dataToSave, function () {
                 if (chrome.runtime.lastError) {
@@ -27,9 +27,24 @@ const StorageMethods = (() => {
 
     return {
         readAsync,
-        write
+        writeAsync
     };
 })();
+
+chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
+    if (message.action === 'sendMessages') {
+        console.log('running handleSendMessages on SW...')
+        handleSendMessages(message).then((res) => sendResponse(res));
+        return true;
+    } else if (message.action == 'loadMsgsArray') {
+        console.log('running handleLoadMsgsArray on SW...')
+        handleLoadMsgsArray(message).then((res) => sendResponse(res));
+        return true;
+    } else if (message.action == 'saveMsgsArray') {
+        handleSaveMsgsArray(message).then((res) => sendResponse(res));
+        return true;
+    }
+});
 
 function handleToastUser(error) {
     //error.text, error.color
@@ -40,21 +55,13 @@ function handleToastUser(error) {
     });
 };
 
-chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
-    if (message.action === 'sendMessages') {
-        console.log('running sendMessages on SW...')
-        handleSendMessages(message).then((res) => sendResponse(res));
-        return true;
-    }
-});
-
 async function handleSendMessages(message) {
     const pastRuns = await StorageMethods.readAsync('olx-multisender-past-runs') || {};
     const regex = /(\d+)(?=\?lis=listing)/;
     const skipPastRuns = message.data.skipPastRuns;
     const errors = []
 
-    const writeRes = await StorageMethods.write({ 'olx-multisender-msg-array': msgArray });
+    const writeRes = await StorageMethods.writeAsync({ 'olx-multisender-msg-array': msgArray });
     if (writeRes[0] != 'ok') {
         console.log('Erro ao salvar mensagens: ', writeRes[1]);
         errors.push(['Erro ao salvar mensagens no storage', writeRes[1]])
@@ -89,7 +96,7 @@ async function handleSendMessages(message) {
             }
         });
 
-        const finalWrite = StorageMethods.write({ 'olx-multisender-past-runs': updatedPastRuns });
+        const finalWrite = StorageMethods.writeAsync({ 'olx-multisender-past-runs': updatedPastRuns });
 
         return ['ok', `Mensagens enviadas com sucesso para ${count} anúncios.`];
 
@@ -98,4 +105,15 @@ async function handleSendMessages(message) {
         return ['Nenhuma aba do olx.com.br foi encontrada.', errors]
     };
 
+};
+
+async function handleSaveMsgsArray(message) {
+    const msgsArray = message.data.msgsArray;
+    return await StorageMethods.writeAsync({ 'olx-multisender-msg-array': msgsArray });
+};
+
+async function handleLoadMsgsArray() {
+    const msgs = await StorageMethods.readAsync('olx-multisender-msg-array');
+    if (!msgs) return null
+    return msgs.length == 0 ? null : msgs;
 };
