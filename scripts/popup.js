@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', function () {
     loadMsgtBtn.addEventListener('click', InputFields.loadMsgs);
     saveMsgtBtn.addEventListener('click', InputFields.saveMessages);
     sendMsgtBtn.addEventListener('click', main);
+
+    InputFields.loadMsgs();
 });
 
 function handleMsg(msg, isErr = false) {
