@@ -43,6 +43,7 @@ const Toast = (() => {
                 z-index: 999999;
                 right: 1.25rem;
                 top: 1.25rem;
+                color: white;
             }
 
             .custom-toast-msg {
@@ -102,14 +103,15 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
 async function sendMessage(message) {
     let msgs = message.data.msgArray;
     const listingCode = message.data.listingCode;
+    const msgsDelay = message.data.msgsDelay;
 
     function response(status = 'ok', error = null) {
-        return { 
+        return {
             status: status,
             listingCode: listingCode,
             url: message.data.tabUrl,
             error: error
-        }
+        };
     };
 
     try {
@@ -120,13 +122,12 @@ async function sendMessage(message) {
         //if (!inputText) return ['error', listingCode, new Error('Janela do chat não encontrado na página.')];
         if (!inputText) return response('error', new Error('Janela do chat não encontrado na página.'));
         const sendBtn = document.querySelector('div.sc-DTJrX.jNuBSW > button');
-        console.log('sendBtn: ', sendBtn);
 
         const msgPromisses = [];
         let increment = 0
         for (const [ind, msg] of msgs.entries()) {
             msgPromisses.push(handleSendMessage(inputText, sendBtn, msg, 4000 + increment));
-            increment += 1500;
+            increment += (msgsDelay * 1000);
         };
 
         const res = await Promise.allSettled(msgPromisses);
@@ -137,7 +138,7 @@ async function sendMessage(message) {
             }
         });
 
-        return response;
+        return response();
 
     } catch (e) {
         console.log('Error: ', e);

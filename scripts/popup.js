@@ -155,12 +155,12 @@ async function main() {
         wakeUpServiceWorkers();
         const res = await chrome.runtime.sendMessage({ action: 'sendMessages', data: { msgArray: msgArray, skipPastRuns: true } }) || ['error', new Error('Erro desconhecido.')];
 
-        if (res[0] != 'ok') {
-            handleMsg(res[1][0][0], true);
-            console.log('Errors: \n', res[1])
-            return;
+        if (res.status != 'ok') {
+            console.log('Errors: \n', res.errors);
+            handleMsg(res.description, true);
+
         } else {
-            handleMsg(res[1]);
+            handleMsg(res.description);
         }
 
     } catch (e) {

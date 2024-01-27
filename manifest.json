@@ -27,6 +27,7 @@
         "service_worker": "scripts/service_worker.js",
         "type": "module"
     },
+    "options_page": "options.html",
     "permissions": [
         "activeTab",
         "storage",

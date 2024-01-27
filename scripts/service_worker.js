@@ -30,6 +30,17 @@ const StorageMethods = (() => {
     };
 })();
 
+let Configs = {}
+
+chrome.runtime.onInstalled.addListener(function (details) {
+    const defaultCfg = {
+        skipOkListings: true,
+        msgsDelay: 1,
+    };
+    StorageMethods.writeAsync({ 'olx-multisender-configs': defaultCfg })
+    Configs = { ...defaultCfg }
+});
+
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     if (message.action === 'sendMessages') {
         console.log('running handleSendMessages on SW...')
@@ -42,6 +53,18 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     } else if (message.action == 'saveMsgsArray') {
         console.log('running handleSaveMsgsArray on SW...')
         handleSaveMsgsArray(message).then((res) => sendResponse(res));
+        return true;
+    } else if (message.action == 'loadConfigsAndPastRuns') {
+        console.log('running handleLoadConfigsAndPastRuns on SW...')
+        handleLoadConfigsAndPastRuns(message).then((res) => sendResponse(res));
+        return true;
+    } else if (message.action == 'savePastRuns') {
+        console.log('running handleSavePastRuns on SW...')
+        handleSavePastRuns(message).then((res) => sendResponse(res));
+        return true;
+    } else if (message.action == 'saveConfigs') {
+        console.log('running handleSaveConfigs on SW...')
+        handleSaveConfigs(message).then((res) => sendResponse(res));
         return true;
     }
 });
@@ -70,14 +93,18 @@ async function handleSendMessages(message) {
 
     const tabs = await chrome.tabs.query({ url: "https://*.olx.com.br/*" });
     if (tabs.length > 0) {
-        for (let i = 0; i < 2; i++) {
+        for (let i = 0; i < 3; i++) {
             const tab = tabs[i]
             const tabId = tab.id
             const tabUrl = tab.url
             const listingCode = tabUrl.match(regex)[0];
 
-            if (listingCode in pastRuns && skipPastRuns) continue;
-            //tabsPromises.push(chrome.tabs.sendMessage(tabId, { action: 'sendMessage', data: { ...message.data, listingCode: listingCode, tabUrl: tabUrl } }));
+            if (listingCode in pastRuns && Configs.skipOkListings) {
+                console.log('skipping: ', listingCode)
+                continue;
+            }
+
+            tabsPromises.push(chrome.tabs.sendMessage(tabId, { action: 'sendMessage', data: { ...message.data, listingCode: listingCode, tabUrl: tabUrl, msgsDelay: Configs.msgsDelay } }));
         };
 
         const tabsPromisesSettled = await Promise.allSettled(tabsPromises);
@@ -88,7 +115,7 @@ async function handleSendMessages(message) {
 
         tabsPromisesSettled.forEach((tabs) => {
             if (tabs.value.status == 'ok') {
-                updatedPastRuns[tabs.value.listingCode] = { status: 'ok' };
+                updatedPastRuns[tabs.value.listingCode] = { status: 'ok', url: tabs.value.tabUrl, codigoAnuncio: tabs.value.listingCode };
                 count++;
             } else {
                 updatedPastRuns[tabs.value.listingCode] = { status: 'error', errors: tabs.value.error };
@@ -101,7 +128,7 @@ async function handleSendMessages(message) {
 
     } else {
         errors.push(['Nenhuma aba do olx.com.br foi encontrada.', new Error('abas com url: "https://olx.com.br/*" não encontradas.')])
-        return ['Nenhuma aba do olx.com.br foi encontrada.', errors]
+        return { status: 'ok', description: 'Nenhuma aba do olx.com.br foi encontrada.', errors: errors };
     };
     const servicesSettled = await Promise.allSettled(servicesPromises);
     servicesSettled.forEach((services) => {
@@ -111,7 +138,7 @@ async function handleSendMessages(message) {
     });
 
     if (errors.length > 0) console.log(`${errors.length} erros foram detectados: \n${errors}`);
-    return ['ok', `Mensagens enviadas com sucesso para ${count} anúncios.`];
+    return { status: 'ok', description: `Mensagens enviadas com sucesso para ${count} anúncios.`, errors: errors };
 };
 
 async function handleSaveMsgsArray(message) {
@@ -123,4 +150,24 @@ async function handleLoadMsgsArray() {
     const msgs = await StorageMethods.readAsync('olx-multisender-msg-array');
     if (!msgs) return null
     return msgs.length == 0 ? null : msgs;
+};
+
+async function handleLoadConfigsAndPastRuns() {
+    const res = {
+        configs: Configs,
+        pastRuns: await StorageMethods.readAsync('olx-multisender-past-runs')
+    }
+    return res;
+};
+
+async function handleSavePastRuns(message) {
+    const pastRuns = message.data.pastRuns;
+    return await StorageMethods.writeAsync({ 'olx-multisender-past-runs': pastRuns })
+}
+
+async function handleSaveConfigs(message) {
+    const configs = message.data.configs;
+    const res = await StorageMethods.writeAsync({ 'olx-multisender-configs': configs })
+    if (res.status == 'ok') Configs = { ...configs };
+    return res
 };

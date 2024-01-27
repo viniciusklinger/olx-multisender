@@ -1,0 +1,33 @@
+<!-- options.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações da Extensão</title>
+    <script src="scripts/options.js"></script>
+    <link rel="stylesheet" href="styles/options.css">
+</head>
+<body>
+    <h1>Configurações da Extensão</h1>
+
+    <label>
+        <input type="checkbox" id="skip-ok-listings">
+        Ignorar anúncios que já receberam mensagens
+    </label>
+
+    <label>
+        Tempo de espera entre o envio de cada mensagem (em segundos):
+        <input type="number" id="msgs-delay" min="0.2" value="10">
+    </label>
+
+    <label>
+        Esta são os dados da memória da extensão, deve estar em formato json válido. É usado como base para saber quais anúncios serão ignorados durante o envio das mensagens. São excluídos automaticamente quando a extensão for desinstalada.
+        <textarea id="json-field"></textarea>
+    </label>
+
+    <button id="save-changes">Salvar alterações</button>
+    <button id="save-pastRuns">Subscrever memória</button>
+
+</body>
+</html>
