@@ -92,12 +92,15 @@ async function handleSendMessages(message) {
     servicesPromises.push(StorageMethods.writeAsync({ 'olx-multisender-msg-array': message.data.msgArray }));
 
     const tabs = await chrome.tabs.query({ url: "https://*.olx.com.br/*" });
+    console.log('tabs: ', tabs)
     if (tabs.length > 0) {
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < tabs.length; i++) {
             const tab = tabs[i]
             const tabId = tab.id
             const tabUrl = tab.url
-            const listingCode = tabUrl.match(regex)[0];
+            const referenceCode = tabUrl.match(regex);
+            if (!referenceCode) continue
+            const listingCode = referenceCode[0];
 
             if (listingCode in pastRuns && Configs.skipOkListings) {
                 console.log('skipping: ', listingCode)
