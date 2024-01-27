@@ -103,12 +103,22 @@ async function sendMessage(message) {
     let msgs = message.data.msgArray;
     const listingCode = message.data.listingCode;
 
+    function response(status = 'ok', error = null) {
+        return { 
+            status: status,
+            listingCode: listingCode,
+            url: message.data.tabUrl,
+            error: error
+        }
+    };
+
     try {
         let inputText = await waitForElementToExist('#input-text-message', 4, 500, true);
         let openChatBtn = document.querySelector('[data-element="button_reply-chat"]');
         openChatBtn.click();
         inputText = await waitForElementToExist('#input-text-message');
-        if (!inputText) return ['error', listingCode, new Error('Janela do chat não encontrado na página.')];
+        //if (!inputText) return ['error', listingCode, new Error('Janela do chat não encontrado na página.')];
+        if (!inputText) return response('error', new Error('Janela do chat não encontrado na página.'));
         const sendBtn = document.querySelector('div.sc-DTJrX.jNuBSW > button');
         console.log('sendBtn: ', sendBtn);
 
@@ -122,15 +132,17 @@ async function sendMessage(message) {
         const res = await Promise.allSettled(msgPromisses);
         res.forEach((msg) => {
             if (msg[0] != 'ok') {
-                return ['error', listingCode, new Error('Uma ou mais mensagens não foram enviadas.')]
+                //return ['error', listingCode, new Error('Uma ou mais mensagens não foram enviadas.')]
+                return response('error', new Error('Uma ou mais mensagens não foram enviadas.'));
             }
         });
 
-        return ['ok', listingCode];
+        return response;
 
     } catch (e) {
         console.log('Error: ', e);
-        return ['error', listingCode, e]
+        //return ['error', listingCode, e]
+        return response('error', e);
     }
 };
 

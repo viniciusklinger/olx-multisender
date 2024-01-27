@@ -6,9 +6,8 @@ const StorageMethods = (() => {
             chrome.storage.sync.get(key, function (result) {
                 if (chrome.runtime.lastError) {
                     reject(new Error(chrome.runtime.lastError));
-                } else {
-                    resolve(result[key]);
                 }
+                resolve(result[key]);
             });
         });
     }
@@ -18,9 +17,9 @@ const StorageMethods = (() => {
             chrome.storage.sync.set(dataToSave, function () {
                 if (chrome.runtime.lastError) {
                     console.error('Erro ao salvar dados:', chrome.runtime.lastError);
-                    reject(['error', new Error('Erro ao salvar dados no storage.')])
+                    reject({ status: 'error', error: new Error('Erro ao salvar dados no storage.') })
                 };
-                resolve(['ok'])
+                resolve({ status: 'ok' })
             });
         })
     }
@@ -41,6 +40,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         handleLoadMsgsArray(message).then((res) => sendResponse(res));
         return true;
     } else if (message.action == 'saveMsgsArray') {
+        console.log('running handleSaveMsgsArray on SW...')
         handleSaveMsgsArray(message).then((res) => sendResponse(res));
         return true;
     }
@@ -59,52 +59,59 @@ async function handleSendMessages(message) {
     const pastRuns = await StorageMethods.readAsync('olx-multisender-past-runs') || {};
     const regex = /(\d+)(?=\?lis=listing)/;
     const skipPastRuns = message.data.skipPastRuns;
-    const errors = []
+    const errors = [];
+    const tabsPromises = [];
+    const servicesPromises = [];
+    let count = 0
 
-    const writeRes = await StorageMethods.writeAsync({ 'olx-multisender-msg-array': msgArray });
-    if (writeRes[0] != 'ok') {
-        console.log('Erro ao salvar mensagens: ', writeRes[1]);
-        errors.push(['Erro ao salvar mensagens no storage', writeRes[1]])
-    };
+    console.log('pastRuns: ', pastRuns)
+
+    servicesPromises.push(StorageMethods.writeAsync({ 'olx-multisender-msg-array': message.data.msgArray }));
 
     const tabs = await chrome.tabs.query({ url: "https://*.olx.com.br/*" });
-    const promises = [];
-
     if (tabs.length > 0) {
         for (let i = 0; i < 2; i++) {
             const tab = tabs[i]
-            //chrome.tabs.update(tabId, { active: true });
-            console.log('tab: ', tab)
             const tabId = tab.id
             const tabUrl = tab.url
             const listingCode = tabUrl.match(regex)[0];
-            console.log('listingCode: ', listingCode)
+
             if (listingCode in pastRuns && skipPastRuns) continue;
-            promises.push(chrome.tabs.sendMessage(tabId, { action: 'sendMessage', data: { ...message.data, listingCode: listingCode } }));
+            //tabsPromises.push(chrome.tabs.sendMessage(tabId, { action: 'sendMessage', data: { ...message.data, listingCode: listingCode, tabUrl: tabUrl } }));
         };
 
-        const updatedPastRuns = { ...pastRuns };
-        const res = await Promise.allSettled(promises)
+        const tabsPromisesSettled = await Promise.allSettled(tabsPromises);
+        console.log('tabsPromisesSettled: ', tabsPromisesSettled)
 
-        let count = 0
-        res.forEach((tabs) => {
-            if (tabs[0] == 'ok') {
-                updatedPastRuns[tabs[1]] = 'ok'
-                count++
+        const updatedPastRuns = { ...pastRuns };
+        console.log('updatedPastRuns: ', updatedPastRuns)
+
+        tabsPromisesSettled.forEach((tabs) => {
+            if (tabs.value.status == 'ok') {
+                updatedPastRuns[tabs.value.listingCode] = { status: 'ok' };
+                count++;
             } else {
-                updatedPastRuns[tabs[1]] = 'error'
+                updatedPastRuns[tabs.value.listingCode] = { status: 'error', errors: tabs.value.error };
+                errors.push(['Erro durante o envio da mensagem.', { codigoAnuncio: tabs.value.listingCode, url: tabs.value.tabUrl, erro: tabs.value.error }]);
             }
         });
 
-        const finalWrite = StorageMethods.writeAsync({ 'olx-multisender-past-runs': updatedPastRuns });
-
-        return ['ok', `Mensagens enviadas com sucesso para ${count} anúncios.`];
+        console.log('final updatedPastRuns: ', updatedPastRuns)
+        servicesPromises.push(StorageMethods.writeAsync({ 'olx-multisender-past-runs': updatedPastRuns }));
 
     } else {
         errors.push(['Nenhuma aba do olx.com.br foi encontrada.', new Error('abas com url: "https://olx.com.br/*" não encontradas.')])
         return ['Nenhuma aba do olx.com.br foi encontrada.', errors]
     };
+    const servicesSettled = await Promise.allSettled(servicesPromises);
+    servicesSettled.forEach((services) => {
+        if (services.value.status != 'ok') {
+            errors.push(['Erro em serviços.', services.value.error]);
+        }
+    });
 
+    if (errors.length > 0) console.log(`${errors.length} erros foram detectados: \n${errors}`);
+    return ['ok', `Mensagens enviadas com sucesso para ${count} anúncios.`];
 };
 
 async function handleSaveMsgsArray(message) {
