@@ -51,7 +51,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
 async function handleSendMessages(message) {
     const pastRuns = await StorageMethods.readAsync('olx-multisender-past-runs') || {};
     const regex = /(\d+)(?=\?lis=listing)/;
-    const ignorePastRuns = message.data.ignorePastRuns;
+    const skipPastRuns = message.data.skipPastRuns;
     const errors = []
 
     const writeRes = await StorageMethods.write({ 'olx-multisender-msg-array': msgArray });
@@ -72,7 +72,7 @@ async function handleSendMessages(message) {
             const tabUrl = tab.url
             const listingCode = tabUrl.match(regex)[0];
             console.log('listingCode: ', listingCode)
-            if (listingCode in pastRuns && ignorePastRuns) continue;
+            if (listingCode in pastRuns && skipPastRuns) continue;
             promises.push(chrome.tabs.sendMessage(tabId, { action: 'sendMessage', data: { ...message.data, listingCode: listingCode } }));
         };
 
