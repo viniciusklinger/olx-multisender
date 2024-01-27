@@ -141,7 +141,7 @@ async function handleSendMessages(message) {
     });
 
     if (errors.length > 0) console.log(`${errors.length} erros foram detectados: \n${errors}`);
-    return { status: 'ok', description: `Mensagens enviadas com sucesso para ${count} anúncios.`, errors: errors };
+    return { status: 'ok', description: count > 0 ? `Mensagens enviadas com sucesso para ${count} anúncios.` : 'Todos os anúncios já receberam mensagens.', errors: errors };
 };
 
 async function handleSaveMsgsArray(message) {
