@@ -85,7 +85,7 @@ const InputFields = (() => {
         };
 
         const msgs = await chrome.runtime.sendMessage({ action: 'saveMsgsArray', data: { msgsArray: msgsArray } });
-        if (msgs[0] != 'ok') {
+        if (msgs.status != 'ok') {
             console.log('Erro ao salvar mensagens: ', msgs[1]);
             handleMsg('Erro ao salvar mensagem, tente novamente.', true);
             saveMsgtBtn.disabled = false;

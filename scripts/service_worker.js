@@ -87,12 +87,9 @@ async function handleSendMessages(message) {
     const servicesPromises = [];
     let count = 0
 
-    console.log('pastRuns: ', pastRuns)
-
     servicesPromises.push(StorageMethods.writeAsync({ 'olx-multisender-msg-array': message.data.msgArray }));
 
     const tabs = await chrome.tabs.query({ url: "https://*.olx.com.br/*" });
-    console.log('tabs: ', tabs)
     if (tabs.length > 0) {
         for (let i = 0; i < tabs.length; i++) {
             const tab = tabs[i]
@@ -111,17 +108,15 @@ async function handleSendMessages(message) {
         };
 
         const tabsPromisesSettled = await Promise.allSettled(tabsPromises);
-        console.log('tabsPromisesSettled: ', tabsPromisesSettled)
 
         const updatedPastRuns = { ...pastRuns };
-        console.log('updatedPastRuns: ', updatedPastRuns)
 
         tabsPromisesSettled.forEach((tabs) => {
             if (tabs.value.status == 'ok') {
                 updatedPastRuns[tabs.value.listingCode] = { status: 'ok', url: tabs.value.tabUrl, codigoAnuncio: tabs.value.listingCode };
                 count++;
             } else {
-                updatedPastRuns[tabs.value.listingCode] = { status: 'error', errors: tabs.value.error };
+                updatedPastRuns[tabs.value.listingCode] = { status: 'error', url: tabs.value.tabUrl, codigoAnuncio: tabs.value.listingCode, errors: tabs.value.error };
                 errors.push(['Erro durante o envio da mensagem.', { codigoAnuncio: tabs.value.listingCode, url: tabs.value.tabUrl, erro: tabs.value.error }]);
             }
         });
@@ -145,8 +140,15 @@ async function handleSendMessages(message) {
 };
 
 async function handleSaveMsgsArray(message) {
-    const msgsArray = message.data.msgsArray;
-    return await StorageMethods.writeAsync({ 'olx-multisender-msg-array': msgsArray });
+    try {
+        const msgsArray = message.data.msgsArray;
+        const res = await StorageMethods.writeAsync({ 'olx-multisender-msg-array': msgsArray });
+        return res
+
+    } catch (e) {
+        console.log('error in handleSaveMsgsArray: ', e);
+        return ['error', e]
+    }
 };
 
 async function handleLoadMsgsArray() {
@@ -156,11 +158,19 @@ async function handleLoadMsgsArray() {
 };
 
 async function handleLoadConfigsAndPastRuns() {
-    const res = {
-        configs: Configs,
-        pastRuns: await StorageMethods.readAsync('olx-multisender-past-runs')
+    try {
+        const pastRuns = await StorageMethods.readAsync('olx-multisender-past-runs');
+        const res = {
+            configs: Configs,
+            pastRuns: pastRuns,
+        }
+        return res;
+
+    } catch (e) {
+        console.log('error in handleSaveMsgsArray: ', e);
+        return ['error', e]
     }
-    return res;
+
 };
 
 async function handleSavePastRuns(message) {
