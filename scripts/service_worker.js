@@ -17,7 +17,7 @@ const StorageMethods = (() => {
             chrome.storage.sync.set(dataToSave, function () {
                 if (chrome.runtime.lastError) {
                     console.error('Erro ao salvar dados:', chrome.runtime.lastError);
-                    reject({ status: 'error', error: new Error('Erro ao salvar dados no storage.') })
+                    resolve({ status: 'error', error: new Error('Erro ao salvar dados no storage.') })
                 };
                 resolve({ status: 'ok' })
             });
@@ -30,16 +30,12 @@ const StorageMethods = (() => {
     };
 })();
 
-let Configs = {}
+let Configs = {
+    skipOkListings: true,
+    msgsDelay: 1,
+};
 
-chrome.runtime.onInstalled.addListener(function (details) {
-    const defaultCfg = {
-        skipOkListings: true,
-        msgsDelay: 1,
-    };
-    StorageMethods.writeAsync({ 'olx-multisender-configs': defaultCfg })
-    Configs = { ...defaultCfg }
-});
+setConfigs();
 
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
     if (message.action === 'sendMessages') {
@@ -68,6 +64,16 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         return true;
     }
 });
+
+async function setConfigs() {
+    const config = await StorageMethods.readAsync('olx-multisender-configs');
+    if (!config) {
+        console.log('Erro ao carregar configs.');
+        return;
+    };
+    console.log('Carregando as configs: ', config)
+    Configs = config;
+}
 
 function handleToastUser(error) {
     //error.text, error.color
@@ -140,15 +146,9 @@ async function handleSendMessages(message) {
 };
 
 async function handleSaveMsgsArray(message) {
-    try {
-        const msgsArray = message.data.msgsArray;
-        const res = await StorageMethods.writeAsync({ 'olx-multisender-msg-array': msgsArray });
-        return res
-
-    } catch (e) {
-        console.log('error in handleSaveMsgsArray: ', e);
-        return ['error', e]
-    }
+    const msgsArray = message.data.msgsArray;
+    const res = await StorageMethods.writeAsync({ 'olx-multisender-msg-array': msgsArray });
+    return res
 };
 
 async function handleLoadMsgsArray() {
