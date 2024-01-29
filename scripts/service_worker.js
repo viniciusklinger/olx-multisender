@@ -86,8 +86,7 @@ function handleToastUser(error) {
 
 async function handleSendMessages(message) {
     const pastRuns = await StorageMethods.readAsync('olx-multisender-past-runs') || {};
-    const regex = /(\d+)(?=\?lis=listing)/;
-    const skipPastRuns = message.data.skipPastRuns;
+    const regex = /(\d{10})/;
     const errors = [];
     const tabsPromises = [];
     const servicesPromises = [];
@@ -110,7 +109,7 @@ async function handleSendMessages(message) {
                 continue;
             }
 
-            tabsPromises.push(chrome.tabs.sendMessage(tabId, { action: 'sendMessage', data: { ...message.data, listingCode: listingCode, tabUrl: tabUrl, msgsDelay: Configs.msgsDelay } }));
+            tabsPromises.push(chrome.tabs.sendMessage(tabId, { action: 'sendMessage', data: { ...message.data, listingCode: listingCode, msgsDelay: Configs.msgsDelay } }));
         };
 
         const tabsPromisesSettled = await Promise.allSettled(tabsPromises);
@@ -119,15 +118,14 @@ async function handleSendMessages(message) {
 
         tabsPromisesSettled.forEach((tabs) => {
             if (tabs.value.status == 'ok') {
-                updatedPastRuns[tabs.value.listingCode] = { status: 'ok', url: tabs.value.tabUrl, codigoAnuncio: tabs.value.listingCode };
+                updatedPastRuns[tabs.value.listingCode] = { status: 'ok', codigoAnuncio: tabs.value.listingCode };
                 count++;
             } else {
-                updatedPastRuns[tabs.value.listingCode] = { status: 'error', url: tabs.value.tabUrl, codigoAnuncio: tabs.value.listingCode, errors: tabs.value.error };
-                errors.push(['Erro durante o envio da mensagem.', { codigoAnuncio: tabs.value.listingCode, url: tabs.value.tabUrl, erro: tabs.value.error }]);
+                updatedPastRuns[tabs.value.listingCode] = { status: 'error', codigoAnuncio: tabs.value.listingCode, errors: tabs.value.error };
+                errors.push(['Erro durante o envio da mensagem.', { codigoAnuncio: tabs.value.listingCode, erro: tabs.value.error }]);
             }
         });
 
-        console.log('final updatedPastRuns: ', updatedPastRuns)
         servicesPromises.push(StorageMethods.writeAsync({ 'olx-multisender-past-runs': updatedPastRuns }));
 
     } else {

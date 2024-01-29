@@ -104,7 +104,6 @@ document.addEventListener('DOMContentLoaded', function () {
             wakeUpServiceWorkers();
             const res = await chrome.runtime.sendMessage({ action: 'loadConfigsAndPastRuns' }) || ['error', new Error('Erro desconhecido.')];
             const configs = res.configs;
-    
             skipOkListings.checked = configs.skipOkListings;
             msgsDelay.value = configs.msgsDelay;
             jsonField.value = JSON.stringify(res.pastRuns);

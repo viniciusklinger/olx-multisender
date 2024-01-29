@@ -109,7 +109,6 @@ async function sendMessage(message) {
         return {
             status: status,
             listingCode: listingCode,
-            url: message.data.tabUrl,
             error: error
         };
     };
